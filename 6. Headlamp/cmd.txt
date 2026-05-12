@@ -1,0 +1,12 @@
+// Creer le deployment/namespace/service Headlamp
+
+kubectl apply -f https://raw.githubusercontent.com/kubernetes-sigs/headlamp/main/kubernetes-headlamp.yaml
+
+// Port forwarding du service Headlamp
+kubectl port-forward -n kube-system service/headlamp 8080:80
+
+// Cree un serviceaccount dans le namespace
+kubectl -n kube-system create serviceaccount headlamp-admin
+
+// Creer un token pour le service account qui est demandé au demarrage de headlamp
+kubectl create token headlamp-admin -n kube-system
