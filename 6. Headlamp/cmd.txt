@@ -8,5 +8,8 @@ kubectl port-forward -n kube-system service/headlamp 8080:80
 // Cree un serviceaccount dans le namespace
 kubectl -n kube-system create serviceaccount headlamp-admin
 
+// Donner les droits admin au compte
+kubectl create clusterrolebinding headlamp-admin --serviceaccount=kube-system:headlamp-admin --clusterrole=cluster-admin
+
 // Creer un token pour le service account qui est demandé au demarrage de headlamp
 kubectl create token headlamp-admin -n kube-system
