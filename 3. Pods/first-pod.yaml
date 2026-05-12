@@ -2,12 +2,20 @@ apiVersion: v1
 kind: Pod
 metadata: 
   name: first-nginx
-  namespace: first-namespace
   labels:
     env: prod
+    app: nginx
+    schtroumpf: grognon
 spec:
   containers:
     - name: nginx-container
       image: nginx:stable-trixie
       ports:
         - containerPort: 80
+      resources:
+        requests:
+          cpu: 0.5
+          memory: "50Mi"
+        limits:
+          cpu: 1
+          memory: "200Mi"
