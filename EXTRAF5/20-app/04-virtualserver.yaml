@@ -1,0 +1,60 @@
+# =============================================================================
+# VirtualServer F5 — la CRD qui pilote CIS qui pilote BIG-IP
+# =============================================================================
+# C'est le PIVOT du setup. Quand cette ressource est appliquée :
+#   1. CIS la détecte via son watch
+#   2. CIS génère un payload AS3 (JSON)
+#   3. CIS POST ce JSON sur l'iControl REST du BIG-IP
+#   4. BIG-IP crée le Virtual Server + Pool + Pool Members + Monitor
+#   5. Le VIP devient routable côté BIG-IP
+#
+# Tu verras le résultat dans la GUI BIG-IP :
+#   Local Traffic > Virtual Servers (partition "k8s")
+#   Local Traffic > Pools          (partition "k8s")
+# =============================================================================
+apiVersion: cis.f5.com/v1
+kind: VirtualServer
+metadata:
+  name: nginx-vs
+  namespace: demo
+  labels:
+    f5cr: "true"
+spec:
+  # ---------------------------------------------------------------------------
+  # Hostname côté client — le BIG-IP matchera ça via Host header (HTTP)
+  # ou SNI (HTTPS).
+  # ---------------------------------------------------------------------------
+  host: nginx.demo.local
+
+  # ---------------------------------------------------------------------------
+  # VIP — l'IP exposée par le BIG-IP côté client.
+  # En labo : choisis une IP libre dans le subnet client du BIG-IP.
+  # En prod : généralement automatisée via IPAM (cf. CRD ipams).
+  # ---------------------------------------------------------------------------
+  virtualServerAddress: "192.168.10.100"
+
+  # Port d'écoute du VirtualServer côté BIG-IP
+  virtualServerHTTPPort: 80
+
+  # Profil HTTP par défaut — laisse le BIG-IP gérer Host header, keepalive, etc.
+  httpTraffic: allow
+
+  # ---------------------------------------------------------------------------
+  # Pools : la liste des backends K8s à load-balancer
+  # ---------------------------------------------------------------------------
+  pools:
+    - path: /
+      # Référence le Service K8s nginx-svc créé juste avant
+      service: nginx-svc
+      servicePort: 80
+      # Health monitor côté BIG-IP — c'est le BIG-IP qui sondera les pods,
+      # pas seulement le kube-proxy.
+      monitor:
+        type: http
+        send: "GET / HTTP/1.1\r\nHost: nginx.demo.local\r\nConnection: close\r\n\r\n"
+        recv: "200 OK"
+        interval: 10
+        timeout: 31
+      # Algorithme de répartition : round-robin par défaut.
+      # Autres options F5 : least-connections-member, ratio-member, fastest-app-response...
+      loadBalancingMethod: round-robin

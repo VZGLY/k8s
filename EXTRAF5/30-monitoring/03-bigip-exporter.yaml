@@ -1,0 +1,132 @@
+# =============================================================================
+# bigip-exporter — exporter Prometheus pour BIG-IP
+# =============================================================================
+# Scrape l'API iControl REST du BIG-IP et expose les métriques au format
+# Prometheus (HTTP, latency, pool members up/down, throughput, CPU TMM, etc.).
+#
+# Image utilisée : community ExpressenAB/bigip_exporter (la plus répandue).
+# Alternative officielle F5 : f5devcentral/big-ip-prometheus-exporter
+# =============================================================================
+
+---
+# -----------------------------------------------------------------------------
+# Secret : creds BIG-IP pour le scrape (read-only suffit, role "Guest")
+# -----------------------------------------------------------------------------
+apiVersion: v1
+kind: Secret
+metadata:
+  name: bigip-exporter-creds
+  namespace: monitoring
+type: Opaque
+stringData:
+  # ATTENTION placeholders — à remplacer
+  BIGIP_USERNAME: "admin"
+  BIGIP_PASSWORD: "REPLACE_ME"
+
+---
+# -----------------------------------------------------------------------------
+# Deployment du bigip-exporter
+# -----------------------------------------------------------------------------
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: bigip-exporter
+  namespace: monitoring
+  labels:
+    app: bigip-exporter
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: bigip-exporter
+  template:
+    metadata:
+      labels:
+        app: bigip-exporter
+    spec:
+      containers:
+        - name: exporter
+          # Image community ExpressenAB
+          image: expressenab/bigip_exporter:latest
+          imagePullPolicy: IfNotPresent
+          args:
+            # IP/FQDN de management du BIG-IP — À MODIFIER
+            - "--bigip.url=10.10.10.10"
+            - "--bigip.username=$(BIGIP_USERNAME)"
+            - "--bigip.password=$(BIGIP_PASSWORD)"
+            # Cert auto-signé du BIG-IP → skip verify en labo
+            - "--bigip.basic-auth=true"
+            - "--exporter.bind-address=:9142"
+            # Namespaces F5 à scraper (partitions BIG-IP)
+            - "--bigip.partitions=k8s,Common"
+          env:
+            - name: BIGIP_USERNAME
+              valueFrom:
+                secretKeyRef:
+                  name: bigip-exporter-creds
+                  key: BIGIP_USERNAME
+            - name: BIGIP_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: bigip-exporter-creds
+                  key: BIGIP_PASSWORD
+          ports:
+            - name: metrics
+              containerPort: 9142
+              protocol: TCP
+          resources:
+            requests:
+              cpu: 50m
+              memory: 64Mi
+            limits:
+              cpu: 200m
+              memory: 128Mi
+
+---
+# -----------------------------------------------------------------------------
+# Service interne (cible du ServiceMonitor)
+# -----------------------------------------------------------------------------
+apiVersion: v1
+kind: Service
+metadata:
+  name: bigip-exporter
+  namespace: monitoring
+  labels:
+    app: bigip-exporter
+spec:
+  type: ClusterIP
+  selector:
+    app: bigip-exporter
+  ports:
+    - name: metrics
+      port: 9142
+      targetPort: metrics
+      protocol: TCP
+
+---
+# -----------------------------------------------------------------------------
+# ServiceMonitor — dit à Prometheus de scraper le bigip-exporter
+# -----------------------------------------------------------------------------
+# Cette CRD vient du prometheus-operator (installé via kube-prometheus-stack).
+# =============================================================================
+apiVersion: monitoring.coreos.com/v1
+kind: ServiceMonitor
+metadata:
+  name: bigip-exporter
+  namespace: monitoring
+  labels:
+    app: bigip-exporter
+    # Label scruté par défaut par le Prometheus du chart kps
+    release: kps
+spec:
+  selector:
+    matchLabels:
+      app: bigip-exporter
+  namespaceSelector:
+    matchNames:
+      - monitoring
+  endpoints:
+    - port: metrics
+      interval: 30s
+      scrapeTimeout: 10s
+      path: /metrics

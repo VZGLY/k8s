@@ -1,0 +1,101 @@
+# =============================================================================
+# Helm values pour le chart f5networks/f5-bigip-ctlr
+# =============================================================================
+# Repo Helm officiel :
+#   helm repo add f5-stable https://f5networks.github.io/charts/stable
+#   helm repo update
+#
+# Installation (depuis WSL) :
+#   helm install f5-bigip-ctlr f5-stable/f5-bigip-ctlr \
+#     --namespace f5-cis \
+#     --values 04-cis-values.yaml
+#
+# Le chart Helm s'occupe de créer le Deployment, le Service et tout le câblage.
+# Le ServiceAccount + Secret doivent exister AVANT (cf. 01/02/03).
+# =============================================================================
+
+# -----------------------------------------------------------------------------
+# Identité du pod
+# -----------------------------------------------------------------------------
+serviceAccount:
+  # On référence le SA créé dans 02-rbac.yaml
+  create: false
+  name: bigip-ctlr
+
+namespace: f5-cis
+
+# -----------------------------------------------------------------------------
+# Configuration BIG-IP — le cœur du sujet
+# -----------------------------------------------------------------------------
+bigip:
+  # URL de management du BIG-IP. À remplacer par l'IP/FQDN réelle de ton BIG-IP.
+  # Le user doit avoir le rôle "Administrator" ou "Resource Administrator"
+  # sur la partition cible.
+  url: https://10.10.10.10
+  # Nom du secret contenant username/password (créé dans 03-secret.example.yaml)
+  secret: bigip-login
+  # Partition dédiée — DOIT EXISTER côté BIG-IP avant que CIS démarre.
+  # À créer via la GUI BIG-IP : System > Users > Partition List > Create.
+  partition: k8s
+
+# -----------------------------------------------------------------------------
+# Arguments du contrôleur — la viande
+# -----------------------------------------------------------------------------
+args:
+  # MODE NODEPORT : CIS pointe les pools BIG-IP vers les NodePorts des Services.
+  # Avantage : le BIG-IP n'a pas besoin de connaître le pod-CIDR (idéal Kind).
+  # Inconvénient : un double-hop kube-proxy → pod (négligeable pour un labo).
+  pool_member_type: nodeport
+
+  # MODE CRD : on utilise les CRDs F5 (VirtualServer, TransportServer...)
+  # plutôt que les Ingress natifs. C'est le mode RECOMMANDÉ par F5.
+  custom_resource_mode: true
+
+  # Niveau de log — DEBUG très bavard mais top pour comprendre ce que CIS pousse
+  log_level: DEBUG
+
+  # Skip TLS verify : le BIG-IP a un cert auto-signé par défaut. En labo : OK.
+  # En prod : false + ajouter le CA bundle via --trusted-certs-cfgmap.
+  insecure: true
+
+  # Watch tous les namespaces (par défaut). Pour limiter : --namespace=foo
+  # namespace: ""
+
+  # Logger AS3 — affiche les payloads JSON envoyés au BIG-IP, ULTRA UTILE
+  # pour comprendre ce que CIS génère (AS3 = Application Services 3 extension)
+  log_as3_response: true
+
+# -----------------------------------------------------------------------------
+# Image
+# -----------------------------------------------------------------------------
+image:
+  # Image officielle F5 sur Docker Hub
+  user: f5networks
+  repo: k8s-bigip-ctlr
+  # Pin sur une version stable récente — à ajuster selon dispo
+  version: 2.20.0
+  pullPolicy: IfNotPresent
+
+# -----------------------------------------------------------------------------
+# Ressources (labo : minimal)
+# -----------------------------------------------------------------------------
+resources:
+  limits:
+    cpu: 500m
+    memory: 512Mi
+  requests:
+    cpu: 100m
+    memory: 128Mi
+
+# -----------------------------------------------------------------------------
+# Replica : 1 suffit pour un labo. En prod : 2+ avec leader-election.
+# -----------------------------------------------------------------------------
+replicaCount: 1
+
+# -----------------------------------------------------------------------------
+# Pods placement
+# -----------------------------------------------------------------------------
+# Pas de nodeSelector imposé — CIS peut tourner sur n'importe quel worker
+nodeSelector: {}
+tolerations: []
+affinity: {}

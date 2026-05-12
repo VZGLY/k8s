@@ -1,0 +1,13 @@
+# =============================================================================
+# Namespace dédié à CIS
+# =============================================================================
+# Bonne pratique : isoler le contrôleur F5 dans son propre namespace pour
+# faciliter la gestion RBAC et les NetworkPolicies éventuelles.
+# =============================================================================
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: f5-cis
+  labels:
+    name: f5-cis
+    app.kubernetes.io/managed-by: f5-lab

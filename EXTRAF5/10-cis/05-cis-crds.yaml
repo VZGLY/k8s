@@ -1,0 +1,29 @@
+# =============================================================================
+# CRDs F5 CIS — à appliquer AVANT d'installer le contrôleur
+# =============================================================================
+# Ces CRDs définissent les types VirtualServer, TransportServer, TLSProfile,
+# Policy, ExternalDNS, IPAM utilisés par CIS en mode custom_resource_mode=true.
+#
+# RÉFÉRENCE : on télécharge la version officielle depuis le repo F5 plutôt
+# que de copier tous les schemas ici (très longs).
+#
+# Pour les installer (depuis WSL) :
+#   kubectl apply -f https://raw.githubusercontent.com/F5Networks/k8s-bigip-ctlr/master/docs/config_examples/customResourceDefinitions/customresourcedefinitions.yml
+#
+# Ou si tu veux les figer en local pour ne pas dépendre du repo upstream :
+#   curl -L -o cis-crds-upstream.yaml \
+#     https://raw.githubusercontent.com/F5Networks/k8s-bigip-ctlr/master/docs/config_examples/customResourceDefinitions/customresourcedefinitions.yml
+#   kubectl apply -f cis-crds-upstream.yaml
+#
+# Une fois appliqué, tu auras notamment :
+#   - virtualservers.cis.f5.com         (HTTP/HTTPS L7)
+#   - transportservers.cis.f5.com       (TCP/UDP L4)
+#   - tlsprofiles.cis.f5.com            (config TLS reprise par VS)
+#   - policies.cis.f5.com               (WAF, iRules, persistance...)
+#   - externaldnses.cis.f5.com          (intégration GTM/DNS)
+#   - ipams.cis.f5.com                  (allocation IP automatique de VIPs)
+# =============================================================================
+
+# Ce fichier est volontairement un placeholder : applique les CRDs upstream
+# via la commande curl/kubectl ci-dessus. C'est plus sûr que de figer une copie
+# qui peut diverger entre versions de CIS.

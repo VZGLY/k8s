@@ -1,0 +1,95 @@
+# =============================================================================
+# kube-prometheus-stack — Helm values
+# =============================================================================
+# Le chart embarque : Prometheus, Grafana, Alertmanager, node-exporter,
+# kube-state-metrics, prometheus-operator. C'est LA stack standard.
+#
+# Repo Helm :
+#   helm repo add prometheus-community https://prometheus-community.github.io/helm-charts
+#   helm repo update
+#
+# Installation (depuis WSL) :
+#   helm install kps prometheus-community/kube-prometheus-stack \
+#     --namespace monitoring \
+#     --create-namespace \
+#     --values 02-kube-prometheus-values.yaml
+# =============================================================================
+
+# -----------------------------------------------------------------------------
+# Prometheus — le serveur de scrape
+# -----------------------------------------------------------------------------
+prometheus:
+  prometheusSpec:
+    # Ressources allégées pour un labo Kind
+    resources:
+      requests:
+        cpu: 200m
+        memory: 512Mi
+      limits:
+        cpu: 1000m
+        memory: 2Gi
+    # Rétention courte en labo
+    retention: 7d
+    # Sélecteur permissif pour découvrir tous les ServiceMonitors,
+    # y compris celui du bigip-exporter qu'on déploiera ensuite
+    serviceMonitorSelectorNilUsesHelmValues: false
+    podMonitorSelectorNilUsesHelmValues: false
+    ruleSelectorNilUsesHelmValues: false
+    probeSelectorNilUsesHelmValues: false
+    # Stockage : on reste en emptyDir pour Kind (pas de PV par défaut).
+    # En prod : configurer storageSpec avec une vraie StorageClass.
+
+# -----------------------------------------------------------------------------
+# Grafana — le dashboard
+# -----------------------------------------------------------------------------
+grafana:
+  enabled: true
+  # Mot de passe admin — à changer
+  adminPassword: "admin"
+  # Service exposé en NodePort pour accès facile depuis l'hôte WSL
+  service:
+    type: NodePort
+    nodePort: 30030
+  # Datasources auto-provisionnées (Prometheus déjà câblé par le chart)
+  defaultDashboardsEnabled: true
+  # Plugin officiel F5 pour les dashboards BIG-IP (optionnel mais utile)
+  plugins: []
+  # Dashboards custom à charger automatiquement via configMaps
+  # On référencera plus tard un dashboard "BIG-IP CIS" via sidecar.
+  sidecar:
+    dashboards:
+      enabled: true
+      label: grafana_dashboard
+      labelValue: "1"
+      searchNamespace: ALL
+
+# -----------------------------------------------------------------------------
+# Alertmanager — basique en labo
+# -----------------------------------------------------------------------------
+alertmanager:
+  enabled: true
+  alertmanagerSpec:
+    resources:
+      requests:
+        cpu: 50m
+        memory: 64Mi
+
+# -----------------------------------------------------------------------------
+# Exporters auxiliaires — par défaut activés, on garde
+# -----------------------------------------------------------------------------
+nodeExporter:
+  enabled: true
+kubeStateMetrics:
+  enabled: true
+
+# -----------------------------------------------------------------------------
+# CRDs du Prometheus Operator — installées par le chart par défaut
+# -----------------------------------------------------------------------------
+prometheusOperator:
+  enabled: true
+  # admissionWebhooks peut poser souci sur Kind si le webhook timing out —
+  # on le désactive pour le labo
+  admissionWebhooks:
+    enabled: false
+  tls:
+    enabled: false

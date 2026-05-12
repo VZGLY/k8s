@@ -1,0 +1,51 @@
+# =============================================================================
+# Application de test : nginx
+# =============================================================================
+# Un Deployment nginx ultra-classique. 3 replicas pour que le BIG-IP voie
+# bien plusieurs pool members et qu'on puisse observer le load balancing.
+# =============================================================================
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: nginx
+  namespace: demo
+  labels:
+    app: nginx
+spec:
+  replicas: 3
+  selector:
+    matchLabels:
+      app: nginx
+  template:
+    metadata:
+      labels:
+        app: nginx
+    spec:
+      containers:
+        - name: nginx
+          image: nginx:1.27-alpine
+          ports:
+            - name: http
+              containerPort: 80
+              protocol: TCP
+          # Healthcheck — le BIG-IP fera SON propre health monitor côté pool,
+          # mais ça n'empêche pas K8s d'avoir le sien.
+          readinessProbe:
+            httpGet:
+              path: /
+              port: http
+            initialDelaySeconds: 2
+            periodSeconds: 5
+          livenessProbe:
+            httpGet:
+              path: /
+              port: http
+            initialDelaySeconds: 10
+            periodSeconds: 10
+          resources:
+            requests:
+              cpu: 50m
+              memory: 32Mi
+            limits:
+              cpu: 200m
+              memory: 64Mi

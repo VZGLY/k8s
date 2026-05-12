@@ -1,0 +1,27 @@
+# =============================================================================
+# PodMonitor — scrape les métriques internes du contrôleur CIS lui-même
+# =============================================================================
+# CIS expose ses propres métriques Prometheus sur le port 8080 (path /metrics) :
+# nombre d'events traités, latence des appels iControl REST, état des AS3 declarations.
+# Ces métriques sont DIFFÉRENTES de celles du bigip-exporter (qui scrape le BIG-IP).
+# =============================================================================
+apiVersion: monitoring.coreos.com/v1
+kind: PodMonitor
+metadata:
+  name: f5-cis
+  namespace: monitoring
+  labels:
+    app: f5-cis
+    release: kps
+spec:
+  namespaceSelector:
+    matchNames:
+      - f5-cis
+  selector:
+    matchLabels:
+      # Label posé par le chart Helm f5-bigip-ctlr sur le pod CIS
+      app: f5-bigip-ctlr
+  podMetricsEndpoints:
+    - port: http-prometheus
+      interval: 30s
+      path: /metrics
