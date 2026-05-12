@@ -1,0 +1,13 @@
+apiVersion: v1
+kind: Pod
+metadata: 
+  name: first-nginx
+  namespace: first-namespace
+  labels:
+    env: prod
+spec:
+  containers:
+    - name: nginx-container
+      image: nginx:stable-trixie
+      ports:
+        - containerPort: 80
