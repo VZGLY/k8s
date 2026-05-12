@@ -10,6 +10,11 @@ spec:
   containers:
     - name: nginx-container
       image: nginx:stable-trixie
+      env:
+        - name: NODE_VERSION
+          value: 24
+        - name: NGINX_VERSION
+          value: latest
       ports:
         - containerPort: 80
       resources:

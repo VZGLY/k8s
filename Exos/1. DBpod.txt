@@ -1,0 +1,12 @@
+Creer un pod avec une DB MSSQL
+
+User SA
+Mot de passe Test123=
+PID Developper
+
+Labels : env: dev / app: db
+
+BONUS => Installer le mot de passe grace aux secrets
+BONUS 2 => Namespace db
+BONUS 3 => Tout en un seul fichier
+
