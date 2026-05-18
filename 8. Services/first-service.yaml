@@ -1,0 +1,16 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: first-service
+  labels:
+    app: front-service
+    env: test
+spec:
+  selector:
+    env: test
+    app: front
+  type: ClusterIP
+  ports:
+    - protocol: TCP
+      port: 8080 # Port d'entrée
+      targetPort: 80 # Port du Container (POD)

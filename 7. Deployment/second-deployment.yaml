@@ -1,0 +1,23 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: second-deployment
+
+spec:
+  replicas: 5
+  selector:
+    matchLabels:
+      env: test
+      app: front
+  template:
+    metadata:
+      name: front-app-second
+      labels:
+        env: test
+        app: front
+    spec:
+      containers:
+        - name: front-container-second
+          image: nginx
+          ports:
+            - containerPort: 80
